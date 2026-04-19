@@ -1,0 +1,88 @@
+import React, { useEffect, useState } from 'react';
+import { DashboardLayout } from '../../components/layout/DashboardLayout';
+import api from '../../api/axios';
+import { Users, Calendar, Clock, CheckCircle } from 'lucide-react';
+
+const FacultyDashboard = () => {
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const res = await api.get('/courses');
+        if (res.data.success) {
+          setCourses(res.data.data);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
+
+  return (
+    <DashboardLayout title="Faculty Dashboard">
+      <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+          <div className="glass-panel stat-card">
+            <div className="stat-icon primary"><Calendar size={32} /></div>
+            <div className="stat-content">
+              <h3>My Courses</h3>
+              <div className="stat-value">{loading ? '...' : courses.length}</div>
+            </div>
+          </div>
+          
+          <div className="glass-panel stat-card">
+            <div className="stat-icon success"><Users size={32} /></div>
+            <div className="stat-content">
+              <h3>Total Students Enrolled</h3>
+              <div className="stat-value">
+                {loading ? '...' : courses.reduce((acc, c) => acc + (c.enrolledStudents?.length || 0), 0)}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="glass-panel" style={{ padding: '24px' }}>
+          <h2 style={{ marginBottom: '20px', fontSize: '18px' }}>Your Courses Overview</h2>
+          {loading ? (
+            <p>Loading your courses...</p>
+          ) : courses.length === 0 ? (
+            <p className="text-muted">You are not assigned to any courses yet.</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+              {courses.map(course => (
+                <div key={course._id} style={{ 
+                  padding: '20px', 
+                  background: 'rgba(255,255,255,0.03)', 
+                  border: '1px solid var(--glass-border)', 
+                  borderRadius: 'var(--radius-md)',
+                  transition: 'transform 0.2s',
+                  cursor: 'pointer'
+                }} className="hover:transform hover:-translate-y-1">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.15)', color: 'var(--accent-primary)' }}>
+                      {course.code}
+                    </span>
+                    <span className="text-sm text-muted">Sem {course.semester}</span>
+                  </div>
+                  <h3 style={{ fontSize: '18px', marginBottom: '8px' }}>{course.name}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                    <Users size={16} />
+                    <span>{course.enrolledStudents?.length || 0} Students</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+};
+
+export default FacultyDashboard;
