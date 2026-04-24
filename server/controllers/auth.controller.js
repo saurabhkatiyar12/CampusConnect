@@ -25,7 +25,9 @@ const register = async (req, res) => {
 // POST /api/auth/login
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
+    email = email?.trim?.();
+    password = password?.trim?.();
     if (!email || !password) return res.status(400).json({ success: false, message: 'Email and password required' });
 
     const normalizedEmail = email.toLowerCase();

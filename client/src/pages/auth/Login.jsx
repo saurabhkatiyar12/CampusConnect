@@ -23,7 +23,7 @@ const Login = () => {
     setError('');
     setIsSubmitting(true);
     try {
-      const data = await login(email, password);
+      const data = await login(email.trim(), password.trim());
       if (data.data.role === 'admin') navigate('/admin');
       else if (data.data.role === 'faculty') navigate('/faculty');
       else navigate('/student');
