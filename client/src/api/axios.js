@@ -1,6 +1,11 @@
 import axios from 'axios';
+const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+if (import.meta.env.DEV) {
+  console.debug('CampusConnect API baseURL:', baseURL);
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',

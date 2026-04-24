@@ -27,13 +27,19 @@ const app = express();
 const server = http.createServer(app);
 
 // Socket.IO setup
-const io = new Server(server, {
-  cors: {
-    origin: [
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim())
+  : [
       "http://localhost:5173",
       "http://localhost:3000",
       "https://campusconnect.vercel.app"
-    ],
+    ];
+
+console.log('✅ CORS origins:', allowedOrigins);
+
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -54,11 +60,7 @@ io.on('connection', (socket) => {
 
 // Middleware
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "https://campusconnect.vercel.app"
-  ],
+  origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json({ limit: '50mb' }));
