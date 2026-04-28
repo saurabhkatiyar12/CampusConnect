@@ -32,12 +32,9 @@ export const Sidebar = () => {
     { to: '/student/teacher', icon: <Users size={20} />, label: 'Teacher' },
     { to: '/student/subject-routing', icon: <LayoutList size={20} />, label: 'Subject Routing' },
     { to: '/student/timetable', icon: <CalendarDays size={20} />, label: 'Timetable' },
-    { to: '/student/student', icon: <UserCheck size={20} />, label: 'Student' },
     { to: '/student/payment', icon: <CreditCard size={20} />, label: 'Student Payment' },
     { to: '/student/attendance', icon: <Check size={20} />, label: 'Attendance' },
     { to: '/student/exam', icon: <FileText size={20} />, label: 'Exam' },
-    { to: '/student/petty-cash', icon: <DollarSign size={20} />, label: 'Petty Cash' },
-    { to: '/student/friends', icon: <Users size={20} />, label: 'Friends' },
     { to: '/student/event', icon: <Calendar size={20} />, label: 'Event' },
   ];
 

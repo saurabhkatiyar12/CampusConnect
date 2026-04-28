@@ -1,12 +1,12 @@
-import { useNavigate } from 'react-router-dom';
+﻿import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
-import { ArrowLeft, BookOpen, Calendar, Users, CreditCard, Trophy, Bell } from 'lucide-react';
+import { ArrowLeft, Calendar, Users } from 'lucide-react';
 
 const sampleContent = {
   Classroom: [
-    { title: 'Live Lecture', detail: 'Join the classroom session for Mathematics at 10:00 AM.' },
-    { title: 'Course Resources', detail: 'Download your lecture notes and practice assignments.' },
-    { title: 'Discussion Forum', detail: 'Ask questions and collaborate with your classmates.' }
+    { title: 'Live Lecture', detail: 'Tomorrow 10:00 AM - Database Systems live session with interactive Q&A and practical walkthroughs.' },
+    { title: 'Course Resources', detail: 'Download lecture slides, sample code, practice quizzes, and reading notes for the week.' },
+    { title: 'Discussion Forum', detail: 'Post questions, share study notes, and collaborate with classmates on assignment topics.' }
   ],
   Grade: [
     { title: 'Semester 1', detail: 'CGPA 8.2 — strong improvement in core subjects.' },
@@ -19,19 +19,19 @@ const sampleContent = {
     { title: 'Communication Skills', detail: 'Improve presentation and writing performance.' }
   ],
   Teacher: [
-    { title: 'Dr. Mehta', detail: 'Computer Science faculty, available Tuesdays 2-4 PM.' },
-    { title: 'Ms. Sharma', detail: 'Mathematics faculty, available for extra help on weekends.' },
-    { title: 'Mr. Singh', detail: 'Soft Skills instructor, organizes monthly workshops.' }
+    { title: 'Dr. Mehta', detail: 'Computer Science faculty, available Tuesdays 2-4 PM.', slug: 'dr-mehta' },
+    { title: 'Ms. Sharma', detail: 'Mathematics faculty, available for extra help on weekends.', slug: 'ms-sharma' },
+    { title: 'Mr. Singh', detail: 'Soft Skills instructor, organizes monthly workshops.', slug: 'mr-singh' }
   ],
   'Subject Routing': [
-    { title: 'Core Subjects', detail: 'Computer Science, Mathematics, and Applied Physics.' },
-    { title: 'Electives', detail: 'Web Design, Machine Learning, and Business Communication.' },
-    { title: 'Progress Map', detail: 'View your recommended subjects for the next semester.' }
+    { title: 'Past Subjects', detail: 'Completed subjects: Data Structures, Discrete Mathematics, Digital Logic, and Soft Skills.' },
+    { title: 'Upcoming Subjects', detail: 'Planned for next semester: Operating Systems, Database Systems, Professional Communication, and Web Design.' },
+    { title: 'Academic Plan', detail: 'Prepare for project milestones, lab work, and elective selection over the next 8 weeks.' }
   ],
   Timetable: [
-    { title: 'Monday', detail: '09:00 AM - Data Structures, 01:00 PM - Digital Logic.' },
-    { title: 'Wednesday', detail: '10:30 AM - Mathematics, 03:00 PM - Elective Lab.' },
-    { title: 'Friday', detail: '11:00 AM - Soft Skills, 02:00 PM - Project Review.' }
+    { title: 'Tomorrow', detail: '09:00 AM - Data Structures, 11:00 AM - Operating Systems, 02:00 PM - Professional Communication.' },
+    { title: 'Day After Tomorrow', detail: '10:30 AM - Discrete Mathematics, 01:00 PM - Web Design, 03:00 PM - Lecture Review.' },
+    { title: 'Thursday', detail: '09:00 AM - Database Systems, 12:00 PM - Soft Skills Workshop, 04:00 PM - Team Project Session.' }
   ],
   Student: [
     { title: 'Profile Summary', detail: 'View your personal details, attendance and activity status.' },
@@ -53,20 +53,10 @@ const sampleContent = {
     { title: 'Exam Results', detail: 'Check past exam scores and overall ranking.' },
     { title: 'Exam Prep', detail: 'View recommended practice tests and notes.' }
   ],
-  'Petty Cash': [
-    { title: 'Balance', detail: 'Available petty cash: ₹1200.' },
-    { title: 'Expense Log', detail: 'Track small expenses for transport and supplies.' },
-    { title: 'Request Funds', detail: 'Submit a petty cash request for campus events.' }
-  ],
-  Friends: [
-    { title: 'Classmates', detail: 'See classmates enrolled in your current subjects.' },
-    { title: 'Study Groups', detail: 'Join group study sessions and peer meetups.' },
-    { title: 'Messages', detail: 'Chat with friends for project collaboration.' }
-  ],
   Event: [
-    { title: 'Upcoming Event', detail: 'Tech fest on May 15 with workshops and competitions.' },
-    { title: 'Registration', detail: 'Register for the coding hackathon by May 8.' },
-    { title: 'Alerts', detail: 'Get event reminders and venue updates.' }
+    { title: 'Upcoming Event', detail: 'Tech Fest & Hackathon on May 15 with keynote sessions, competitions, and internship showcases.' },
+    { title: 'Registration', detail: 'Register before May 8 to join the coding sprint and workshop tracks.' },
+    { title: 'Alerts', detail: 'Event alerts will notify you about schedule changes and venue updates.' }
   ]
 };
 
@@ -89,12 +79,41 @@ const StudentFeature = ({ title, description }) => {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
-            {items.map((item, index) => (
-              <div key={index} className="glass-panel" style={{ padding: '20px', border: '1px solid var(--glass-border)' }}>
-                <h3 style={{ marginBottom: '12px' }}>{item.title}</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>{item.detail}</p>
-              </div>
-            ))}
+            {items.map((item, index) => {
+              const isTeacherCard = title === 'Teacher' && item.slug;
+              const cardStyle = {
+                padding: '20px',
+                border: '1px solid var(--glass-border)',
+                textAlign: 'left',
+                background: 'transparent',
+                cursor: isTeacherCard ? 'pointer' : 'default',
+                transition: isTeacherCard ? 'all 0.2s ease' : undefined
+              };
+
+              const cardContent = (
+                <>
+                  <h3 style={{ marginBottom: '12px' }}>{item.title}</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>{item.detail}</p>
+                  {isTeacherCard && <p style={{ marginTop: '16px', color: 'var(--accent-primary)', fontSize: '13px' }}>View profile</p>}
+                </>
+              );
+
+              return isTeacherCard ? (
+                <button
+                  key={index}
+                  type="button"
+                  className="glass-panel"
+                  onClick={() => navigate(`/student/teacher/${item.slug}`)}
+                  style={cardStyle}
+                >
+                  {cardContent}
+                </button>
+              ) : (
+                <div key={index} className="glass-panel" style={cardStyle}>
+                  {cardContent}
+                </div>
+              );
+            })}
           </div>
 
           <div style={{ marginTop: '28px', padding: '24px', background: 'rgba(255,255,255,0.04)', borderRadius: 'var(--radius-md)', display: 'grid', gap: '16px' }}>

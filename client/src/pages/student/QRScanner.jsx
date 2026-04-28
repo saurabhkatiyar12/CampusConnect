@@ -1,213 +1,179 @@
 import { useEffect, useState, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import api from '../../api/axios';
 import { QrCode, CheckCircle, XCircle } from 'lucide-react';
 
 const QRScanner = () => {
+  const [status, setStatus] = useState('starting');
+  const [message, setMessage] = useState('Initializing camera...');
   const [scanResult, setScanResult] = useState(null);
-  const [error, setError] = useState(null);
-  const [scanning, setScanning] = useState(true);
-  const [scannerStarted, setScannerStarted] = useState(false);
-  const [retryKey, setRetryKey] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
   const scannerRef = useRef(null);
   const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const tokenParam = params.get('token');
-
-    const startScanner = async () => {
+    const initializeScanner = async () => {
       try {
-        setScanning(true);
-        setScannerStarted(false);
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Camera not supported on this device/browser.');
+        }
+
+        setStatus('starting');
+        setMessage('Waiting for camera permission...');
 
         if (scannerRef.current) {
-          await scannerRef.current.stop().catch(console.error);
-          await scannerRef.current.clear().catch(console.error);
+          await scannerRef.current.stop().catch(() => {});
+          await scannerRef.current.clear().catch(() => {});
         }
 
         const html5QrCode = new Html5Qrcode('reader');
         scannerRef.current = html5QrCode;
 
+        const onScanSuccess = async (decodedText) => {
+          if (!decodedText) return;
+          await stopScanner();
+          setStatus('submitting');
+          setMessage('QR detected, marking attendance...');
+
+          const token = parseToken(decodedText);
+          await markAttendance(token);
+        };
+
         const config = {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
-          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-          rememberLastUsedCamera: true,
+          qrbox: { width: 250, height: 250 }
         };
 
-        const onScanSuccess = async (decodedText) => {
-          const trimmedText = decodedText?.trim?.() || decodedText;
-          console.log('QR Code detected:', trimmedText);
-          await scannerRef.current?.stop().catch(console.error);
-          await scannerRef.current?.clear().catch(console.error);
-          scannerRef.current = null;
-          setScanning(false);
-          setScannerStarted(true);
-
-          try {
-            const url = new URL(trimmedText);
-            const token = url.searchParams.get('token');
-            console.log('Parsed attendance token from URL:', token);
-            if (token) {
-              await markAttendance(token);
-            } else {
-              setError('Invalid QR Code format. No token found.');
-            }
-          } catch {
-            console.log('Scan text is not a URL, trying raw token:', trimmedText);
-            await markAttendance(trimmedText);
-          }
-        };
-
-        const onScanError = (errorMessage) => {
-          console.log('QR Scanner error:', errorMessage);
-          setScannerStarted(true);
-          if (errorMessage.includes('NotAllowedError') || errorMessage.includes('Permission denied')) {
-            setError('Camera permission denied. Please allow camera access and refresh the page.');
-            setScanning(false);
-          } else if (errorMessage.includes('NotFoundError')) {
-            setError('No camera found on this device.');
-            setScanning(false);
-          }
-        };
-
-        let cameraConfig = { facingMode: { exact: 'environment' } };
-        let cameraStartError = null;
-
-        try {
-          await html5QrCode.start(cameraConfig, config, onScanSuccess, onScanError);
-        } catch (err) {
-          cameraStartError = err;
-          console.warn('Environment camera start failed, falling back to available device IDs.', err);
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras?.length) {
+          throw new Error('No camera found. Please attach a camera and refresh.');
         }
 
-        if (cameraStartError) {
-          const cameras = await Html5Qrcode.getCameras();
-          if (!cameras || cameras.length === 0) {
-            throw new Error('No camera devices found. Please connect a camera and refresh the page.');
-          }
+        const backCamera = cameras.find((camera) => /back|rear|environment|wide/i.test(camera.label));
+        const cameraConfig = backCamera
+          ? { deviceId: { exact: backCamera.id } }
+          : { deviceId: { exact: cameras[0].id } };
 
-          const environmentCamera = cameras.find((camera) => /back|rear|environment|wide/i.test(camera.label));
-          cameraConfig = environmentCamera
-            ? { deviceId: { exact: environmentCamera.id } }
-            : { deviceId: { exact: cameras[0].id } };
+        await html5QrCode.start(cameraConfig, config, onScanSuccess, () => {});
 
-          await html5QrCode.start(cameraConfig, config, onScanSuccess, onScanError);
-        }
-
-        setScannerStarted(true);
+        setStatus('ready');
+        setMessage('Point your camera at the attendance QR code.');
       } catch (err) {
-        console.error('Failed to start scanner:', err);
-        setError(err?.message || 'Failed to start camera. Please check permissions and try again.');
-        setScanning(false);
-        setScannerStarted(true);
+        const errorMessage = err?.message || 'Unable to start camera.';
+        setStatus('error');
+        setMessage(errorMessage);
       }
     };
 
-    if (tokenParam) {
-      setScanning(false);
-      markAttendance(tokenParam);
-    } else {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setError('Camera not supported on this device/browser');
-        setScanning(false);
+    const stopScanner = async () => {
+      if (scannerRef.current) {
+        await scannerRef.current.stop().catch(() => {});
+        await scannerRef.current.clear().catch(() => {});
+        scannerRef.current = null;
+      }
+    };
+
+    const parseToken = (rawText) => {
+      const trimmed = rawText?.trim?.();
+      if (!trimmed) return '';
+      try {
+        const url = new URL(trimmed);
+        return url.searchParams.get('token') || trimmed;
+      } catch {
+        return trimmed;
+      }
+    };
+
+    const markAttendance = async (token) => {
+      if (!token) {
+        setStatus('error');
+        setMessage('Invalid QR code. Please scan a valid attendance QR code.');
         return;
       }
-      startScanner();
-    }
+
+      try {
+        const res = await api.post('/attendance/mark', { token });
+        if (res.data?.success) {
+          setStatus('success');
+          setScanResult(res.data?.message || 'Attendance marked successfully.');
+        } else {
+          setStatus('error');
+          setMessage(res.data?.message || 'Unable to mark attendance.');
+        }
+      } catch (err) {
+        setStatus('error');
+        setMessage(err.response?.data?.message || 'Attendance submission failed. Please try again.');
+      }
+    };
+
+    initializeScanner();
 
     return () => {
-      scannerRef.current?.stop().catch(console.error);
-      scannerRef.current?.clear().catch(console.error);
-      scannerRef.current = null;
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {});
+        scannerRef.current.clear().catch(() => {});
+        scannerRef.current = null;
+      }
     };
-  }, [location.search, retryKey]);
+  }, [retryCount]);
 
   const retryScan = () => {
-    setError(null);
-    setScanning(true);
-    setScannerStarted(false);
-    setRetryKey(prev => prev + 1);
-  };
-
-  const markAttendance = async (token) => {
-    try {
-      const tokenValue = token?.trim?.();
-      console.log('Marking attendance with token:', tokenValue);
-      const res = await api.post('/attendance/mark', { token: tokenValue });
-      console.log('Attendance response:', res.data);
-      if (res.data.success) {
-        setScanResult(res.data);
-      } else {
-        setError(res.data.message || 'Failed to mark attendance.');
-      }
-    } catch (err) {
-      console.error('Attendance mark failed:', err);
-      setError(err.response?.data?.message || 'Failed to mark attendance. QR code may be expired.');
-    }
+    setStatus('starting');
+    setMessage('Restarting scanner...');
+    setScanResult(null);
+    setRetryCount((prev) => prev + 1);
   };
 
   return (
     <DashboardLayout title="Scan QR Code">
       <div className="animate-fade-in" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        
-        <div className="glass-panel" style={{ width: '100%', maxWidth: '500px', padding: '32px', textAlign: 'center' }}>
-          
-          {scanning && !error && !scanResult && (
+        <div className="glass-panel" style={{ width: '100%', maxWidth: '540px', padding: '32px', textAlign: 'center' }}>
+          <QrCode size={48} style={{ color: 'var(--accent-primary)', marginBottom: '16px' }} />
+          <h2 style={{ marginBottom: '12px' }}>Scan to Mark Attendance</h2>
+          <p className="text-muted" style={{ marginBottom: '24px' }}>{message}</p>
+
+          {(status === 'starting' || status === 'ready') && (
             <div>
-              <QrCode size={48} className="text-primary mb-4 mx-auto" style={{ color: 'var(--accent-primary)', marginBottom: '16px' }} />
-              <h2 style={{ marginBottom: '8px' }}>Mark Your Attendance</h2>
-              <p className="text-muted mb-4" style={{ marginBottom: '24px' }}>
-                {scannerStarted ? 'Point your camera at the QR code displayed by the faculty.' : 'Starting camera...'}
-              </p>
-              
-              <div id="reader" key={retryKey} style={{ width: '100%', minHeight: '360px', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}></div>
-              
-              {!scannerStarted && (
-                <div style={{ marginTop: '16px', fontSize: '14px', color: 'var(--text-muted)' }}>
-                  If camera does not start, check browser permissions or try refreshing the page.
-                </div>
+              <div id="reader" style={{ width: '100%', minHeight: '360px', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}></div>
+              {status === 'starting' && (
+                <p className="text-muted" style={{ marginTop: '16px' }}>Waiting for camera access...</p>
               )}
             </div>
           )}
 
-          {scanResult && (
-            <div className="animate-fade-in">
-              <div style={{ width: '80px', height: '80px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+          {status === 'success' && (
+            <div>
+              <div style={{ width: '80px', height: '80px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '50%', margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <CheckCircle size={48} color="var(--success)" />
               </div>
-              <h2 style={{ marginBottom: '12px', color: 'var(--success)' }}>Attendance Marked!</h2>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>{scanResult.message}</p>
-              <button className="btn btn-primary" onClick={() => navigate('/student')} style={{ width: '100%', justifyContent: 'center' }}>
-                Return to Dashboard
+              <h3 style={{ marginBottom: '12px', color: 'var(--success)' }}>Attendance Marked!</h3>
+              <p className="text-muted" style={{ marginBottom: '24px' }}>{scanResult}</p>
+              <button className="btn btn-primary" onClick={() => navigate('/student')} style={{ width: '100%' }}>
+                Go to Dashboard
               </button>
             </div>
           )}
 
-          {error && (
-            <div className="animate-fade-in">
-              <div style={{ width: '80px', height: '80px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+          {status === 'error' && (
+            <div>
+              <div style={{ width: '80px', height: '80px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <XCircle size={48} color="var(--danger)" />
               </div>
-              <h2 style={{ marginBottom: '12px', color: 'var(--danger)' }}>Camera Error</h2>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>{error}</p>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button className="btn btn-primary" onClick={retryScan} style={{ flex: 1, justifyContent: 'center' }}>
-                  Try Again
+              <h3 style={{ marginBottom: '12px', color: 'var(--danger)' }}>Unable to Scan</h3>
+              <p className="text-muted" style={{ marginBottom: '24px' }}>{message}</p>
+              <div style={{ display: 'grid', gap: '12px' }}>
+                <button className="btn btn-primary" onClick={retryScan} style={{ width: '100%' }}>
+                  Retry
                 </button>
-                <button className="btn" onClick={() => navigate('/student')} style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,0.1)' }}>
-                  Dashboard
+                <button className="btn" onClick={() => navigate('/student')} style={{ width: '100%', background: 'rgba(255,255,255,0.1)' }}>
+                  Back to Dashboard
                 </button>
               </div>
             </div>
           )}
-
         </div>
-
       </div>
     </DashboardLayout>
   );

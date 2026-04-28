@@ -11,6 +11,7 @@ import AttendanceManager from './pages/faculty/AttendanceManager';
 import AssignmentManager from './pages/faculty/AssignmentManager';
 import StudentDashboard from './pages/student/StudentDashboard';
 import StudentFeature from './pages/student/StudentFeature';
+import TeacherProfile from './pages/student/TeacherProfile';
 import QRScanner from './pages/student/QRScanner';
 import AssignmentList from './pages/student/AssignmentList';
 import ProfilePage from './pages/shared/ProfilePage';
@@ -91,6 +92,11 @@ const AppRoutes = () => {
           <StudentFeature title="Teacher" description="See your assigned teachers and contact information." />
         </ProtectedRoute>
       } />
+      <Route path="/student/teacher/:teacherName" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <TeacherProfile />
+        </ProtectedRoute>
+      } />
       <Route path="/student/subject-routing" element={
         <ProtectedRoute allowedRoles={['student']}>
           <StudentFeature title="Subject Routing" description="View your subject routing and semester plan." />
@@ -99,11 +105,6 @@ const AppRoutes = () => {
       <Route path="/student/timetable" element={
         <ProtectedRoute allowedRoles={['student']}>
           <StudentFeature title="Timetable" description="Check your timetable and lecture schedule." />
-        </ProtectedRoute>
-      } />
-      <Route path="/student/student" element={
-        <ProtectedRoute allowedRoles={['student']}>
-          <StudentFeature title="Student" description="Student details and profile summary." />
         </ProtectedRoute>
       } />
       <Route path="/student/payment" element={
@@ -119,11 +120,6 @@ const AppRoutes = () => {
       <Route path="/student/exam" element={
         <ProtectedRoute allowedRoles={['student']}>
           <StudentFeature title="Exam" description="Check exam schedules and results." />
-        </ProtectedRoute>
-      } />
-      <Route path="/student/petty-cash" element={
-        <ProtectedRoute allowedRoles={['student']}>
-          <StudentFeature title="Petty Cash" description="Manage petty cash and incidental expenses." />
         </ProtectedRoute>
       } />
       <Route path="/student/friends" element={
