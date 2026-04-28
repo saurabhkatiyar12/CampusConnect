@@ -136,11 +136,14 @@ const QRScanner = () => {
 
   const markAttendance = async (token) => {
     try {
-      console.log('Marking attendance with token:', token);
-      const res = await api.post('/attendance/mark', { token });
+      const tokenValue = token?.trim?.();
+      console.log('Marking attendance with token:', tokenValue);
+      const res = await api.post('/attendance/mark', { token: tokenValue });
       console.log('Attendance response:', res.data);
       if (res.data.success) {
         setScanResult(res.data);
+      } else {
+        setError(res.data.message || 'Failed to mark attendance.');
       }
     } catch (err) {
       console.error('Attendance mark failed:', err);

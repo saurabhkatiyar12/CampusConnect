@@ -36,7 +36,22 @@ const createSession = async (req, res) => {
 
 const markAttendance = async (req, res) => {
   try {
-    const { token } = req.body;
+    let { token } = req.body;
+    if (!token || typeof token !== 'string') {
+      return res.status(400).json({ success: false, message: 'Invalid attendance token' });
+    }
+
+    token = token.trim();
+    if (token.includes('/scan?token=')) {
+      try {
+        const parsedUrl = new URL(token);
+        const urlToken = parsedUrl.searchParams.get('token');
+        if (urlToken) token = urlToken;
+      } catch (parseError) {
+        console.warn('Failed to parse token URL, using raw token value', parseError);
+      }
+    }
+
     const decoded = verifyQRToken(token);
     const session = await AttendanceSession.findById(decoded.sessionId).populate('course', 'name enrolledStudents');
     if (!session || !session.isActive || new Date() > session.expiresAt)
