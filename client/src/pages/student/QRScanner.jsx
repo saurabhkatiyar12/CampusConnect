@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
-import { Html5Qrcode, Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import api from '../../api/axios';
 import { QrCode, CheckCircle, XCircle } from 'lucide-react';
 
@@ -30,24 +30,28 @@ const QRScanner = () => {
         }
 
         if (scannerRef.current) {
-          await scannerRef.current.clear();
+          await scannerRef.current.stop().catch(console.error);
+          await scannerRef.current.clear().catch(console.error);
         }
 
-        const scanner = new Html5QrcodeScanner('reader', {
+        const html5QrCode = new Html5Qrcode('reader');
+        scannerRef.current = html5QrCode;
+        const cameraId = cameras[0].id;
+
+        const config = {
           fps: 10,
           qrbox: { width: 250, height: 250 },
           formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-          showTorchButtonIfSupported: true,
-          showZoomSliderIfSupported: true,
           rememberLastUsedCamera: true,
-        }, false);
+        };
 
-        scannerRef.current = scanner;
-
-        await scanner.render(
+        await html5QrCode.start(
+          { deviceId: { exact: cameraId } },
+          config,
           async (decodedText) => {
             console.log('QR Code detected:', decodedText);
-            await scannerRef.current?.clear();
+            await scannerRef.current?.stop().catch(console.error);
+            await scannerRef.current?.clear().catch(console.error);
             scannerRef.current = null;
             setScanning(false);
             setScannerStarted(true);
@@ -99,6 +103,7 @@ const QRScanner = () => {
     }
 
     return () => {
+      scannerRef.current?.stop().catch(console.error);
       scannerRef.current?.clear().catch(console.error);
       scannerRef.current = null;
     };
