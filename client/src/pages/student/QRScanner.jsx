@@ -11,6 +11,7 @@ const QRScanner = () => {
   const [scanResult, setScanResult] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const scannerRef = useRef(null);
+  const isSubmittingRef = useRef(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tokenFromUrl = searchParams.get('token') || '';
@@ -19,6 +20,7 @@ const QRScanner = () => {
     const initializeScanner = async () => {
       try {
         if (tokenFromUrl) {
+          isSubmittingRef.current = true;
           setStatus('submitting');
           setMessage('Attendance link detected, marking attendance...');
           await markAttendance(parseToken(tokenFromUrl));
@@ -41,12 +43,13 @@ const QRScanner = () => {
         scannerRef.current = html5QrCode;
 
         const onScanSuccess = async (decodedText) => {
-          if (!decodedText) return;
-          await stopScanner();
+          if (!decodedText || isSubmittingRef.current) return;
+          isSubmittingRef.current = true;
           setStatus('submitting');
           setMessage('QR detected, marking attendance...');
 
           const token = parseToken(decodedText);
+          stopScanner().catch(() => {});
           await markAttendance(token);
         };
 
@@ -97,23 +100,30 @@ const QRScanner = () => {
 
     const markAttendance = async (token) => {
       if (!token) {
+        isSubmittingRef.current = false;
         setStatus('error');
         setMessage('Invalid QR code. Please scan a valid attendance QR code.');
         return;
       }
 
       try {
-        const res = await api.post('/attendance/mark', { token });
+        const res = await api.post('/attendance/mark', { token }, { timeout: 30000 });
         if (res.data?.success) {
           setStatus('success');
           setScanResult(res.data?.message || 'Attendance marked successfully.');
         } else {
+          isSubmittingRef.current = false;
           setStatus('error');
           setMessage(res.data?.message || 'Unable to mark attendance.');
         }
       } catch (err) {
+        isSubmittingRef.current = false;
         setStatus('error');
-        setMessage(err.response?.data?.message || 'Attendance submission failed. Please try again.');
+        setMessage(
+          err.code === 'ECONNABORTED'
+            ? 'Attendance request timed out. Please wake the backend and try again.'
+            : err.response?.data?.message || 'Attendance submission failed. Please try again.'
+        );
       }
     };
 
@@ -129,6 +139,7 @@ const QRScanner = () => {
   }, [retryCount, tokenFromUrl]);
 
   const retryScan = () => {
+    isSubmittingRef.current = false;
     setStatus('starting');
     setMessage('Restarting scanner...');
     setScanResult(null);

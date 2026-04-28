@@ -1,6 +1,13 @@
 const User = require('../models/User');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/jwt');
 
+const refreshCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  maxAge: 7 * 24 * 60 * 60 * 1000
+};
+
 // POST /api/auth/register
 const register = async (req, res) => {
   try {
@@ -15,7 +22,7 @@ const register = async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
-    res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 7 * 24 * 60 * 60 * 1000 });
+    res.cookie('refreshToken', refreshToken, refreshCookieOptions);
     res.status(201).json({ success: true, data: user, accessToken });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -45,7 +52,7 @@ const login = async (req, res) => {
     user.gamification.lastActive = new Date();
     await user.save();
 
-    res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 7 * 24 * 60 * 60 * 1000 });
+    res.cookie('refreshToken', refreshToken, refreshCookieOptions);
     res.json({ success: true, data: user, accessToken });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -73,7 +80,7 @@ const refresh = async (req, res) => {
 const logout = async (req, res) => {
   try {
     await User.findByIdAndUpdate(req.user._id, { refreshToken: '' });
-    res.clearCookie('refreshToken');
+    res.clearCookie('refreshToken', refreshCookieOptions);
     res.json({ success: true, message: 'Logged out successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
