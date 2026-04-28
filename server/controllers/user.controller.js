@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Course = require('../models/Course');
+const Timetable = require('../models/Timetable');
 
 // GET /api/users - Admin only
 const getAllUsers = async (req, res) => {
@@ -25,9 +26,22 @@ const getAllUsers = async (req, res) => {
 // GET /api/users/:id
 const getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).populate('enrolledCourses', 'name code');
+    const user = await User.findById(req.params.id).populate('enrolledCourses', 'name code semester credits');
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-    res.json({ success: true, data: user });
+
+    let taughtCourses = [];
+    let schedule = [];
+
+    if (user.role === 'faculty') {
+      taughtCourses = await Course.find({ faculty: user._id, isActive: true })
+        .populate('enrolledStudents', 'name rollNo')
+        .sort({ semester: 1, name: 1 });
+      schedule = await Timetable.find({ faculty: user._id })
+        .populate('course', 'name code')
+        .sort({ day: 1, startTime: 1 });
+    }
+
+    res.json({ success: true, data: { ...user.toJSON(), taughtCourses, schedule } });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -119,4 +133,55 @@ const getStats = async (req, res) => {
   }
 };
 
-module.exports = { getAllUsers, getUserById, updateProfile, changePassword, updateUser, deleteUser, getLeaderboard, getStats };
+const getFacultyDirectory = async (req, res) => {
+  try {
+    const courseFilter = req.user.role === 'student'
+      ? { _id: { $in: req.user.enrolledCourses }, isActive: true }
+      : { isActive: true };
+
+    const courses = await Course.find(courseFilter)
+      .populate('faculty', 'name email department phone profilePhoto')
+      .sort({ semester: 1, name: 1 });
+
+    const facultyMap = {};
+    courses.forEach((course) => {
+      if (!course.faculty) return;
+      const key = course.faculty._id.toString();
+      if (!facultyMap[key]) {
+        facultyMap[key] = {
+          ...course.faculty.toObject(),
+          subjects: [],
+          semesters: new Set()
+        };
+      }
+
+      facultyMap[key].subjects.push({
+        _id: course._id,
+        name: course.name,
+        code: course.code,
+        semester: course.semester,
+        studentCount: course.enrolledStudents?.length || 0
+      });
+      facultyMap[key].semesters.add(course.semester);
+    });
+
+    const facultyList = await Promise.all(Object.values(facultyMap).map(async (faculty) => {
+      const schedule = await Timetable.find({ faculty: faculty._id })
+        .populate('course', 'name code')
+        .sort({ day: 1, startTime: 1 })
+        .limit(8);
+
+      return {
+        ...faculty,
+        semesters: [...faculty.semesters].sort((left, right) => left - right),
+        schedule
+      };
+    }));
+
+    res.json({ success: true, data: facultyList });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = { getAllUsers, getUserById, updateProfile, changePassword, updateUser, deleteUser, getLeaderboard, getStats, getFacultyDirectory };

@@ -1,10 +1,11 @@
 const router = require('express').Router();
-const { getAllUsers, getUserById, updateProfile, changePassword, updateUser, deleteUser, getLeaderboard, getStats } = require('../controllers/user.controller');
+const { getAllUsers, getUserById, updateProfile, changePassword, updateUser, deleteUser, getLeaderboard, getStats, getFacultyDirectory } = require('../controllers/user.controller');
 const { protect, requireRole } = require('../middleware/auth');
 const { uploadAvatar } = require('../middleware/upload');
 
 router.get('/stats', protect, requireRole('admin'), getStats);
 router.get('/leaderboard', protect, getLeaderboard);
+router.get('/faculty-directory', protect, getFacultyDirectory);
 router.get('/', protect, requireRole('admin', 'faculty'), getAllUsers);
 router.get('/:id', protect, getUserById);
 router.put('/profile', protect, uploadAvatar.single('avatar'), updateProfile);

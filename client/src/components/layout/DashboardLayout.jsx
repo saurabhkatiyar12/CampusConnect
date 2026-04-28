@@ -18,6 +18,7 @@ export const Sidebar = () => {
 
   const facultyLinks = [
     { to: '/faculty', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
+    { to: '/faculty/classroom', icon: <BookOpen size={20} />, label: 'Classroom' },
     { to: '/faculty/attendance', icon: <Users size={20} />, label: 'Attendance' },
     { to: '/faculty/assignments', icon: <BookOpen size={20} />, label: 'Assignments' },
     { to: '/profile', icon: <UserIcon size={20} />, label: 'Profile' },

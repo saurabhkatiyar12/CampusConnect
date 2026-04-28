@@ -8,6 +8,9 @@ const studyMaterialSchema = new mongoose.Schema({
   files: [{ filename: String, originalName: String, path: String, mimetype: String, size: Number }],
   subject: { type: String, default: '' },
   tags: [String],
+  resourceType: { type: String, enum: ['document', 'video', 'link', 'live-class', 'dataset'], default: 'document' },
+  externalUrl: { type: String, default: '' },
+  weekLabel: { type: String, default: '' },
   downloadCount: { type: Number, default: 0 }
 }, { timestamps: true });
 

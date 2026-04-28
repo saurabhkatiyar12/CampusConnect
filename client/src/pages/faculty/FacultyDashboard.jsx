@@ -108,6 +108,19 @@ const FacultyDashboard = () => {
               <p style={{ margin: 0, color: 'var(--text-muted)' }}>Create new assignments, grade submissions, and share feedback with students.</p>
             </button>
 
+            <button
+              type="button"
+              onClick={() => navigate('/faculty/classroom')}
+              className="glass-panel"
+              style={{ padding: '20px', textAlign: 'left', border: '1px solid var(--glass-border)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                <BookOpen size={20} className="text-info" />
+                <h3 style={{ margin: 0, fontSize: '16px' }}>Classroom Hub</h3>
+              </div>
+              <p style={{ margin: 0, color: 'var(--text-muted)' }}>Post announcements, upload study materials, and monitor class discussion in one place.</p>
+            </button>
+
             <div className="glass-panel" style={{ padding: '20px', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.03)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                 <CalendarDays size={20} className="text-warning" />

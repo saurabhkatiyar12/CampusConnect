@@ -9,12 +9,19 @@ import CourseManagement from './pages/admin/CourseManagement';
 import FacultyDashboard from './pages/faculty/FacultyDashboard';
 import AttendanceManager from './pages/faculty/AttendanceManager';
 import AssignmentManager from './pages/faculty/AssignmentManager';
+import FacultyClassroomManager from './pages/faculty/FacultyClassroomManager';
 import StudentDashboard from './pages/student/StudentDashboard';
 import StudentFeature from './pages/student/StudentFeature';
 import TeacherProfile from './pages/student/TeacherProfile';
 import QRScanner from './pages/student/QRScanner';
 import AssignmentList from './pages/student/AssignmentList';
 import StudentAttendance from './pages/student/StudentAttendance';
+import StudentClassroom from './pages/student/StudentClassroom';
+import StudentGrades from './pages/student/StudentGrades';
+import StudentSubjects from './pages/student/StudentSubjects';
+import StudentTeachers from './pages/student/StudentTeachers';
+import StudentSubjectRouting from './pages/student/StudentSubjectRouting';
+import StudentTimetable from './pages/student/StudentTimetable';
 import ProfilePage from './pages/shared/ProfilePage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -68,6 +75,11 @@ const AppRoutes = () => {
           <AssignmentManager />
         </ProtectedRoute>
       } />
+      <Route path="/faculty/classroom" element={
+        <ProtectedRoute allowedRoles={['faculty']}>
+          <FacultyClassroomManager />
+        </ProtectedRoute>
+      } />
       
       <Route path="/student" element={
         <ProtectedRoute allowedRoles={['student']}>
@@ -76,22 +88,22 @@ const AppRoutes = () => {
       } />
       <Route path="/student/classroom" element={
         <ProtectedRoute allowedRoles={['student']}>
-          <StudentFeature title="Classroom" description="Your classroom overview and course details." />
+          <StudentClassroom />
         </ProtectedRoute>
       } />
       <Route path="/student/grade" element={
         <ProtectedRoute allowedRoles={['student']}>
-          <StudentFeature title="Grade" description="View your grades and progress." />
+          <StudentGrades />
         </ProtectedRoute>
       } />
       <Route path="/student/subject" element={
         <ProtectedRoute allowedRoles={['student']}>
-          <StudentFeature title="Subject" description="Browse subjects and subject details." />
+          <StudentSubjects />
         </ProtectedRoute>
       } />
       <Route path="/student/teacher" element={
         <ProtectedRoute allowedRoles={['student']}>
-          <StudentFeature title="Teacher" description="See your assigned teachers and contact information." />
+          <StudentTeachers />
         </ProtectedRoute>
       } />
       <Route path="/student/teacher/:teacherName" element={
@@ -101,12 +113,12 @@ const AppRoutes = () => {
       } />
       <Route path="/student/subject-routing" element={
         <ProtectedRoute allowedRoles={['student']}>
-          <StudentFeature title="Subject Routing" description="View your subject routing and semester plan." />
+          <StudentSubjectRouting />
         </ProtectedRoute>
       } />
       <Route path="/student/timetable" element={
         <ProtectedRoute allowedRoles={['student']}>
-          <StudentFeature title="Timetable" description="Check your timetable and lecture schedule." />
+          <StudentTimetable />
         </ProtectedRoute>
       } />
       <Route path="/student/payment" element={

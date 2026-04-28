@@ -1,4 +1,22 @@
 const Message = require('../models/Message');
+const Course = require('../models/Course');
+
+const ensureCourseAccess = async (courseId, user) => {
+  const course = await Course.findById(courseId).populate('enrolledStudents', '_id');
+  if (!course) {
+    const error = new Error('Course not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (user.role === 'admin') return course;
+  if (user.role === 'faculty' && course.faculty?.toString() === user._id.toString()) return course;
+  if (user.role === 'student' && course.enrolledStudents.some((student) => student._id.toString() === user._id.toString())) return course;
+
+  const error = new Error('You are not allowed to access this classroom');
+  error.statusCode = 403;
+  throw error;
+};
 
 const getConversations = async (req, res) => {
   try {
@@ -58,4 +76,56 @@ const sendMessage = async (req, res) => {
   }
 };
 
-module.exports = { getConversations, getMessages, sendMessage };
+const getClassroomMessages = async (req, res) => {
+  try {
+    const course = await ensureCourseAccess(req.params.courseId, req.user);
+    const conversationId = `classroom_${course._id}`;
+
+    const messages = await Message.find({ conversationId, threadType: 'classroom', isDeleted: false })
+      .populate('sender', 'name profilePhoto role')
+      .sort({ createdAt: 1 });
+
+    res.json({ success: true, data: messages });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ success: false, message: error.message });
+  }
+};
+
+const sendClassroomMessage = async (req, res) => {
+  try {
+    const course = await ensureCourseAccess(req.params.courseId, req.user);
+    const conversationId = `classroom_${course._id}`;
+
+    const message = await Message.create({
+      sender: req.user._id,
+      conversationId,
+      course: course._id,
+      threadType: 'classroom',
+      content: req.body.content || '',
+      readBy: [req.user._id]
+    });
+
+    const populated = await Message.findById(message._id).populate('sender', 'name profilePhoto role');
+    const io = req.app.get('io');
+
+    if (io) {
+      const recipientIds = [
+        ...course.enrolledStudents.map((student) => student._id.toString()),
+        course.faculty?.toString()
+      ].filter(Boolean);
+
+      recipientIds.forEach((recipientId) => {
+        io.to(`user_${recipientId}`).emit('classroomMessage', {
+          courseId: course._id.toString(),
+          message: populated
+        });
+      });
+    }
+
+    res.status(201).json({ success: true, data: populated });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = { getConversations, getMessages, sendMessage, getClassroomMessages, sendClassroomMessage };
