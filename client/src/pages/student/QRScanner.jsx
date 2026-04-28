@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { Html5Qrcode } from 'html5-qrcode';
 import api from '../../api/axios';
@@ -12,10 +12,19 @@ const QRScanner = () => {
   const [retryCount, setRetryCount] = useState(0);
   const scannerRef = useRef(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const tokenFromUrl = searchParams.get('token') || '';
 
   useEffect(() => {
     const initializeScanner = async () => {
       try {
+        if (tokenFromUrl) {
+          setStatus('submitting');
+          setMessage('Attendance link detected, marking attendance...');
+          await markAttendance(parseToken(tokenFromUrl));
+          return;
+        }
+
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           throw new Error('Camera not supported on this device/browser.');
         }
@@ -117,7 +126,7 @@ const QRScanner = () => {
         scannerRef.current = null;
       }
     };
-  }, [retryCount]);
+  }, [retryCount, tokenFromUrl]);
 
   const retryScan = () => {
     setStatus('starting');
@@ -140,6 +149,12 @@ const QRScanner = () => {
               {status === 'starting' && (
                 <p className="text-muted" style={{ marginTop: '16px' }}>Waiting for camera access...</p>
               )}
+            </div>
+          )}
+
+          {status === 'submitting' && (
+            <div style={{ minHeight: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <p className="text-muted">Submitting attendance...</p>
             </div>
           )}
 

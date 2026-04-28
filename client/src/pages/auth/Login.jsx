@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { LogIn, User, Lock, Loader2 } from 'lucide-react';
 import './Auth.css';
@@ -11,8 +11,13 @@ const Login = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectTo = location.state?.from
+    ? `${location.state.from.pathname}${location.state.from.search || ''}`
+    : null;
 
   if (user) {
+    if (redirectTo) return <Navigate to={redirectTo} replace />;
     if (user.role === 'admin') return <Navigate to="/admin" replace />;
     if (user.role === 'faculty') return <Navigate to="/faculty" replace />;
     return <Navigate to="/student" replace />;
@@ -24,7 +29,8 @@ const Login = () => {
     setIsSubmitting(true);
     try {
       const data = await login(email.trim(), password.trim());
-      if (data.data.role === 'admin') navigate('/admin');
+      if (redirectTo) navigate(redirectTo, { replace: true });
+      else if (data.data.role === 'admin') navigate('/admin');
       else if (data.data.role === 'faculty') navigate('/faculty');
       else navigate('/student');
     } catch (err) {

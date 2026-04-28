@@ -11,7 +11,8 @@ const generateQRToken = (sessionId, courseId, expiryMinutes = 10) => {
 
 const generateQRCodeImage = async (token) => {
   try {
-    const url = `${process.env.CLIENT_URL}/scan?token=${token}`;
+    const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '');
+    const url = `${clientUrl}/scan?token=${encodeURIComponent(token)}`;
     const qrDataURL = await QRCode.toDataURL(url, {
       width: 300,
       margin: 2,

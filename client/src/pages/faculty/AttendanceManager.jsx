@@ -44,6 +44,28 @@ const AttendanceManager = () => {
     }
   }, [activeSession]);
 
+  useEffect(() => {
+    if (!selectedCourse || activeSession) return;
+
+    let ignore = false;
+    api.get(`/attendance/course/${selectedCourse}`).then(res => {
+      if (!res.data.success || ignore) return;
+
+      const restoredSession = res.data.data.sessions.find((session) => (
+        session.isActive && new Date(session.expiresAt) > new Date()
+      ));
+
+      if (restoredSession) {
+        setActiveSession(restoredSession);
+        setLiveStudents(restoredSession.markedStudents || []);
+      }
+    }).catch(() => {});
+
+    return () => {
+      ignore = true;
+    };
+  }, [selectedCourse, activeSession]);
+
   const startSession = async () => {
     if (!selectedCourse) return alert("Please select a course first");
     setLoading(true);
@@ -132,6 +154,11 @@ const AttendanceManager = () => {
               <p style={{ marginTop: '16px', color: 'var(--warning)', fontWeight: '500' }}>
                 Session expires at: {new Date(activeSession.expiresAt).toLocaleTimeString()}
               </p>
+              {activeSession.scanUrl && (
+                <p style={{ marginTop: '12px', fontSize: '13px', color: 'var(--text-muted)', wordBreak: 'break-all' }}>
+                  Scan opens: <a href={activeSession.scanUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-primary)' }}>{activeSession.scanUrl}</a>
+                </p>
+              )}
             </div>
           )}
         </div>

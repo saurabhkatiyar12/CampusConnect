@@ -10,6 +10,9 @@ const createSession = async (req, res) => {
     const { courseId, location, expiryMinutes = 10 } = req.body;
     const course = await Course.findById(courseId).populate('enrolledStudents', '_id');
     if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
+    if (req.user.role === 'faculty' && course.faculty?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'You can only start attendance for your own courses' });
+    }
 
     const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
     const session = await AttendanceSession.create({
@@ -19,7 +22,7 @@ const createSession = async (req, res) => {
     });
 
     const finalToken = generateQRToken(session._id, courseId, expiryMinutes);
-    const { qrDataURL } = await generateQRCodeImage(finalToken);
+    const { qrDataURL, url: scanUrl } = await generateQRCodeImage(finalToken);
     session.qrToken = finalToken;
     session.qrCode = qrDataURL;
     await session.save();
@@ -28,7 +31,7 @@ const createSession = async (req, res) => {
       course.enrolledStudents.map(s => s._id),
       { sender: req.user._id, type: 'attendance', title: 'Attendance Open', message: `Scan QR for ${course.name}`, link: '/scan' }
     );
-    res.status(201).json({ success: true, data: session });
+    res.status(201).json({ success: true, data: { ...session.toObject(), scanUrl } });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -53,12 +56,27 @@ const markAttendance = async (req, res) => {
     }
 
     const decoded = verifyQRToken(token);
+    if (decoded.type !== 'attendance' || !decoded.sessionId || !decoded.courseId) {
+      return res.status(400).json({ success: false, message: 'Invalid attendance token' });
+    }
+
     const session = await AttendanceSession.findById(decoded.sessionId).populate('course', 'name enrolledStudents');
+    if (!session || !session.course) {
+      return res.status(404).json({ success: false, message: 'Attendance session not found' });
+    }
+    if (session.qrToken !== token || session.course._id.toString() !== decoded.courseId.toString()) {
+      return res.status(400).json({ success: false, message: 'This QR code does not match the active attendance session' });
+    }
     if (!session || !session.isActive || new Date() > session.expiresAt)
       return res.status(400).json({ success: false, message: 'QR expired or session closed' });
 
     const enrolled = session.course.enrolledStudents.some(s => s.toString() === req.user._id.toString());
     if (!enrolled) return res.status(403).json({ success: false, message: 'Not enrolled in this course' });
+
+    const existingRecord = await AttendanceRecord.findOne({ student: req.user._id, session: session._id });
+    if (existingRecord) {
+      return res.status(400).json({ success: false, message: `Already marked as ${existingRecord.status}` });
+    }
 
     const marked = session.markedStudents.some(s => s.student.toString() === req.user._id.toString());
     if (marked) return res.status(400).json({ success: false, message: 'Already marked' });
@@ -68,7 +86,14 @@ const markAttendance = async (req, res) => {
     session.markedStudents.push({ student: req.user._id, status });
     await session.save();
 
-    await AttendanceRecord.create({ student: req.user._id, course: session.course._id, session: session._id, status });
+    try {
+      await AttendanceRecord.create({ student: req.user._id, course: session.course._id, session: session._id, status, location: session.location });
+    } catch (recordError) {
+      if (recordError?.code === 11000) {
+        return res.status(400).json({ success: false, message: 'Attendance already marked' });
+      }
+      throw recordError;
+    }
     await gamifService.awardPoints(req.user._id, status === 'present' ? 10 : 5, 'Attendance');
     res.json({ success: true, message: `Attendance marked: ${status}`, status });
   } catch (error) {
