@@ -11,6 +11,7 @@ const QRScanner = () => {
   const [scanning, setScanning] = useState(true);
   const [scannerStarted, setScannerStarted] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
+  const scannerRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -31,19 +32,25 @@ const QRScanner = () => {
       }
 
       // Start QR Scanner camera
-      const scanner = new Html5QrcodeScanner("reader", { 
-        fps: 10, 
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(console.error);
+      }
+
+      const scanner = new Html5QrcodeScanner("reader", {
+        fps: 10,
         qrbox: { width: 250, height: 250 },
         formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ],
-        supportedScanTypes: ["qr_code"],
         showTorchButtonIfSupported: true,
         showZoomSliderIfSupported: true,
-      });
+        rememberLastUsedCamera: true,
+      }, false);
+      scannerRef.current = scanner;
 
       scanner.render(
         (decodedText) => {
           console.log("QR Code detected:", decodedText);
-          scanner.clear();
+          scannerRef.current?.clear();
+          scannerRef.current = null;
           setScanning(false);
           setScannerStarted(true);
           // decodedText will be the full URL (e.g. http://localhost:5173/scan?token=...)
@@ -83,7 +90,8 @@ const QRScanner = () => {
       });
 
       return () => {
-        scanner.clear().catch(console.error);
+        scannerRef.current?.clear().catch(console.error);
+        scannerRef.current = null;
       };
     }
   }, [retryKey]);
