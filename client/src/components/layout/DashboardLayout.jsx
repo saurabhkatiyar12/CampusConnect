@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, Users, BookOpen, Settings, LogOut, Bell, User as UserIcon, Check } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, Settings, LogOut, Bell, User as UserIcon, Check, Award, Bookmark, LayoutList, CalendarDays, UserCheck, CreditCard, FileText, DollarSign, Calendar } from 'lucide-react';
 import { useSocket } from '../../context/SocketContext';
 import './Layout.css';
 
@@ -25,9 +25,20 @@ export const Sidebar = () => {
 
   const studentLinks = [
     { to: '/student', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-    { to: '/student/attendance', icon: <Users size={20} />, label: 'My Attendance' },
-    { to: '/student/assignments', icon: <BookOpen size={20} />, label: 'My Assignments' },
-    { to: '/profile', icon: <UserIcon size={20} />, label: 'Profile' },
+    { to: '/profile', icon: <UserIcon size={20} />, label: 'My Profile' },
+    { to: '/student/classroom', icon: <BookOpen size={20} />, label: 'Classroom' },
+    { to: '/student/grade', icon: <Award size={20} />, label: 'Grade' },
+    { to: '/student/subject', icon: <Bookmark size={20} />, label: 'Subject' },
+    { to: '/student/teacher', icon: <Users size={20} />, label: 'Teacher' },
+    { to: '/student/subject-routing', icon: <LayoutList size={20} />, label: 'Subject Routing' },
+    { to: '/student/timetable', icon: <CalendarDays size={20} />, label: 'Timetable' },
+    { to: '/student/student', icon: <UserCheck size={20} />, label: 'Student' },
+    { to: '/student/payment', icon: <CreditCard size={20} />, label: 'Student Payment' },
+    { to: '/student/attendance', icon: <Check size={20} />, label: 'Attendance' },
+    { to: '/student/exam', icon: <FileText size={20} />, label: 'Exam' },
+    { to: '/student/petty-cash', icon: <DollarSign size={20} />, label: 'Petty Cash' },
+    { to: '/student/friends', icon: <Users size={20} />, label: 'Friends' },
+    { to: '/student/event', icon: <Calendar size={20} />, label: 'Event' },
   ];
 
   const links = user?.role === 'admin' ? adminLinks : user?.role === 'faculty' ? facultyLinks : studentLinks;

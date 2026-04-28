@@ -10,6 +10,7 @@ import FacultyDashboard from './pages/faculty/FacultyDashboard';
 import AttendanceManager from './pages/faculty/AttendanceManager';
 import AssignmentManager from './pages/faculty/AssignmentManager';
 import StudentDashboard from './pages/student/StudentDashboard';
+import StudentFeature from './pages/student/StudentFeature';
 import QRScanner from './pages/student/QRScanner';
 import AssignmentList from './pages/student/AssignmentList';
 import ProfilePage from './pages/shared/ProfilePage';
@@ -68,6 +69,71 @@ const AppRoutes = () => {
       <Route path="/student" element={
         <ProtectedRoute allowedRoles={['student']}>
           <StudentDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/student/classroom" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentFeature title="Classroom" description="Your classroom overview and course details." />
+        </ProtectedRoute>
+      } />
+      <Route path="/student/grade" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentFeature title="Grade" description="View your grades and progress." />
+        </ProtectedRoute>
+      } />
+      <Route path="/student/subject" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentFeature title="Subject" description="Browse subjects and subject details." />
+        </ProtectedRoute>
+      } />
+      <Route path="/student/teacher" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentFeature title="Teacher" description="See your assigned teachers and contact information." />
+        </ProtectedRoute>
+      } />
+      <Route path="/student/subject-routing" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentFeature title="Subject Routing" description="View your subject routing and semester plan." />
+        </ProtectedRoute>
+      } />
+      <Route path="/student/timetable" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentFeature title="Timetable" description="Check your timetable and lecture schedule." />
+        </ProtectedRoute>
+      } />
+      <Route path="/student/student" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentFeature title="Student" description="Student details and profile summary." />
+        </ProtectedRoute>
+      } />
+      <Route path="/student/payment" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentFeature title="Student Payment" description="Manage your payments and fee details." />
+        </ProtectedRoute>
+      } />
+      <Route path="/student/attendance" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentFeature title="Attendance" description="View attendance records and scan history." />
+        </ProtectedRoute>
+      } />
+      <Route path="/student/exam" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentFeature title="Exam" description="Check exam schedules and results." />
+        </ProtectedRoute>
+      } />
+      <Route path="/student/petty-cash" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentFeature title="Petty Cash" description="Manage petty cash and incidental expenses." />
+        </ProtectedRoute>
+      } />
+      <Route path="/student/friends" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentFeature title="Friends" description="Connect with friends and classmates." />
+        </ProtectedRoute>
+      } />
+      <Route path="/student/event" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentFeature title="Event" description="View upcoming events and announcements." />
         </ProtectedRoute>
       } />
       <Route path="/scan" element={
