@@ -40,7 +40,8 @@ const QRScanner = () => {
         };
 
         const onScanSuccess = async (decodedText) => {
-          console.log('QR Code detected:', decodedText);
+          const trimmedText = decodedText?.trim?.() || decodedText;
+          console.log('QR Code detected:', trimmedText);
           await scannerRef.current?.stop().catch(console.error);
           await scannerRef.current?.clear().catch(console.error);
           scannerRef.current = null;
@@ -48,15 +49,17 @@ const QRScanner = () => {
           setScannerStarted(true);
 
           try {
-            const url = new URL(decodedText);
+            const url = new URL(trimmedText);
             const token = url.searchParams.get('token');
+            console.log('Parsed attendance token from URL:', token);
             if (token) {
-              markAttendance(token);
+              await markAttendance(token);
             } else {
               setError('Invalid QR Code format. No token found.');
             }
           } catch {
-            markAttendance(decodedText);
+            console.log('Scan text is not a URL, trying raw token:', trimmedText);
+            await markAttendance(trimmedText);
           }
         };
 
@@ -133,11 +136,14 @@ const QRScanner = () => {
 
   const markAttendance = async (token) => {
     try {
+      console.log('Marking attendance with token:', token);
       const res = await api.post('/attendance/mark', { token });
+      console.log('Attendance response:', res.data);
       if (res.data.success) {
         setScanResult(res.data);
       }
     } catch (err) {
+      console.error('Attendance mark failed:', err);
       setError(err.response?.data?.message || 'Failed to mark attendance. QR code may be expired.');
     }
   };
