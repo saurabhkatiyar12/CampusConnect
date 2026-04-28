@@ -2,19 +2,33 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import api from '../../api/axios';
-import { Users, Calendar, Clock, CheckCircle, Bell, ClipboardList, BookOpen, CalendarDays } from 'lucide-react';
+import { Users, Calendar, CheckCircle, Bell, ClipboardList, CalendarDays, AlertTriangle, TrendingUp } from 'lucide-react';
+import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 
 const FacultyDashboard = () => {
   const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
+  const [analytics, setAnalytics] = useState({
+    attendanceRate: 0,
+    byCourse: [],
+    lowAttendance: [],
+    totalPresent: 0,
+    totalAbsent: 0
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const res = await api.get('/courses');
-        if (res.data.success) {
-          setCourses(res.data.data);
+        const [courseRes, analyticsRes] = await Promise.all([
+          api.get('/courses'),
+          api.get('/analytics')
+        ]);
+        if (courseRes.data.success) {
+          setCourses(courseRes.data.data);
+        }
+        if (analyticsRes.data.success) {
+          setAnalytics(analyticsRes.data.data);
         }
       } catch (err) {
         console.error(err);
@@ -45,6 +59,22 @@ const FacultyDashboard = () => {
               <div className="stat-value">
                 {loading ? '...' : courses.reduce((acc, c) => acc + (c.enrolledStudents?.length || 0), 0)}
               </div>
+            </div>
+          </div>
+
+          <div className="glass-panel stat-card">
+            <div className="stat-icon info"><TrendingUp size={32} /></div>
+            <div className="stat-content">
+              <h3>Attendance Success Rate</h3>
+              <div className="stat-value">{loading ? '...' : `${analytics.attendanceRate}%`}</div>
+            </div>
+          </div>
+
+          <div className="glass-panel stat-card">
+            <div className="stat-icon warning"><AlertTriangle size={32} /></div>
+            <div className="stat-content">
+              <h3>At-Risk Students</h3>
+              <div className="stat-value">{loading ? '...' : analytics.lowAttendance.length}</div>
             </div>
           </div>
         </div>
@@ -128,6 +158,59 @@ const FacultyDashboard = () => {
               ))}
             </div>
           )}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', alignItems: 'start' }}>
+          <div className="glass-panel" style={{ padding: '24px' }}>
+            <h2 style={{ marginBottom: '8px', fontSize: '18px' }}>Course Attendance Monitoring</h2>
+            <p className="text-muted" style={{ marginBottom: '20px' }}>
+              Track attendance health across the courses you teach.
+            </p>
+            <div style={{ width: '100%', height: '300px' }}>
+              <ResponsiveContainer>
+                <BarChart
+                  data={analytics.byCourse.map((course) => ({
+                    course: course.course?.code || course.course?.name || 'Course',
+                    rate: course.rate
+                  }))}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                  <XAxis dataKey="course" stroke="rgba(255,255,255,0.7)" />
+                  <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.7)" />
+                  <Tooltip />
+                  <Bar dataKey="rate" name="Attendance %" fill="#22c55e" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="glass-panel" style={{ padding: '24px' }}>
+            <h2 style={{ marginBottom: '16px', fontSize: '18px' }}>Defaulter Watchlist</h2>
+            {loading ? (
+              <p>Loading attendance watchlist...</p>
+            ) : analytics.lowAttendance.length === 0 ? (
+              <p className="text-muted">No low-attendance students detected in your courses.</p>
+            ) : (
+              <div style={{ display: 'grid', gap: '12px' }}>
+                {analytics.lowAttendance.slice(0, 5).map((entry) => (
+                  <div
+                    key={`${entry.student?._id}-${entry.course?._id}`}
+                    style={{
+                      padding: '14px 16px',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'rgba(245, 158, 11, 0.08)',
+                      borderLeft: '4px solid var(--warning)'
+                    }}
+                  >
+                    <div style={{ fontWeight: 600 }}>{entry.student?.name}</div>
+                    <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                      {entry.course?.code} • {entry.percentage}% attendance
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </DashboardLayout>

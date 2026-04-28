@@ -14,6 +14,7 @@ import StudentFeature from './pages/student/StudentFeature';
 import TeacherProfile from './pages/student/TeacherProfile';
 import QRScanner from './pages/student/QRScanner';
 import AssignmentList from './pages/student/AssignmentList';
+import StudentAttendance from './pages/student/StudentAttendance';
 import ProfilePage from './pages/shared/ProfilePage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -115,7 +116,7 @@ const AppRoutes = () => {
       } />
       <Route path="/student/attendance" element={
         <ProtectedRoute allowedRoles={['student']}>
-          <StudentFeature title="Attendance" description="View attendance records and scan history." />
+          <StudentAttendance />
         </ProtectedRoute>
       } />
       <Route path="/student/exam" element={

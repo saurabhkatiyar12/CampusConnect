@@ -23,7 +23,7 @@ const QRScanner = () => {
           isSubmittingRef.current = true;
           setStatus('submitting');
           setMessage('Attendance link detected, marking attendance...');
-          await markAttendance(parseToken(tokenFromUrl));
+          await markAttendance(parseToken(tokenFromUrl), 'direct-link');
           return;
         }
 
@@ -50,7 +50,7 @@ const QRScanner = () => {
 
           const token = parseToken(decodedText);
           stopScanner().catch(() => {});
-          await markAttendance(token);
+          await markAttendance(token, 'camera');
         };
 
         const config = {
@@ -98,7 +98,47 @@ const QRScanner = () => {
       }
     };
 
-    const markAttendance = async (token) => {
+    const getGeoLocation = () => new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve({ status: 'unsupported' });
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            status: 'captured'
+          });
+        },
+        (error) => {
+          const status = error.code === 1
+            ? 'denied'
+            : error.code === 3
+              ? 'timeout'
+              : 'unavailable';
+          resolve({ status });
+        },
+        { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 }
+      );
+    });
+
+    const collectScanContext = async (scanSource) => {
+      const geoLocation = await getGeoLocation();
+      return {
+        geoLocation,
+        deviceInfo: {
+          userAgent: navigator.userAgent || '',
+          platform: navigator.userAgentData?.platform || navigator.platform || '',
+          language: navigator.language || ''
+        },
+        scanSource
+      };
+    };
+
+    const markAttendance = async (token, scanSource) => {
       if (!token) {
         isSubmittingRef.current = false;
         setStatus('error');
@@ -107,7 +147,8 @@ const QRScanner = () => {
       }
 
       try {
-        const res = await api.post('/attendance/mark', { token }, { timeout: 30000 });
+        const scanContext = await collectScanContext(scanSource);
+        const res = await api.post('/attendance/mark', { token, ...scanContext }, { timeout: 30000 });
         if (res.data?.success) {
           setStatus('success');
           setScanResult(res.data?.message || 'Attendance marked successfully.');

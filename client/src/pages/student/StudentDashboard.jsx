@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import api from '../../api/axios';
-import { QrCode, BookOpen, Star, Award, TrendingUp } from 'lucide-react';
+import { QrCode, Star, Award, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const StudentDashboard = () => {
   const [dashboardData, setDashboardData] = useState({
     enrolledCourses: [],
     attendanceStats: [],
+    attendanceSummary: null,
+    attendanceAlerts: [],
+    attendanceInsights: [],
     gamification: { points: 0, badges: [] }
   });
   const [loading, setLoading] = useState(true);
@@ -25,6 +28,9 @@ const StudentDashboard = () => {
         setDashboardData({
           enrolledCourses: courseRes.data.success ? courseRes.data.data : [],
           attendanceStats: attRes.data.success ? attRes.data.data.stats : [],
+          attendanceSummary: attRes.data.success ? attRes.data.data.summary : null,
+          attendanceAlerts: attRes.data.success ? attRes.data.data.alerts : [],
+          attendanceInsights: attRes.data.success ? attRes.data.data.insights : [],
           gamification: meRes.data.success ? meRes.data.data.gamification : { points: 0, badges: [] }
         });
       } catch (err) {
@@ -36,9 +42,10 @@ const StudentDashboard = () => {
     fetchDashboard();
   }, []);
 
-  const overallAttendance = dashboardData.attendanceStats.length > 0 
-    ? Math.round(dashboardData.attendanceStats.reduce((acc, curr) => acc + curr.percentage, 0) / dashboardData.attendanceStats.length) 
-    : 0;
+  const overallAttendance = dashboardData.attendanceSummary?.overallPercentage
+    ?? (dashboardData.attendanceStats.length > 0
+      ? Math.round(dashboardData.attendanceStats.reduce((acc, curr) => acc + curr.percentage, 0) / dashboardData.attendanceStats.length)
+      : 0);
 
   return (
     <DashboardLayout title="Student Dashboard">
@@ -56,13 +63,18 @@ const StudentDashboard = () => {
             </div>
           </div>
           
-          <div className="glass-panel stat-card">
+          <div className="glass-panel stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/student/attendance')}>
             <div className="stat-icon info"><TrendingUp size={32} /></div>
             <div className="stat-content">
               <h3>Overall Attendance</h3>
               <div className="stat-value" style={{ color: overallAttendance >= 75 ? 'var(--success)' : 'var(--danger)' }}>
                 {loading ? '...' : `${overallAttendance}%`}
               </div>
+              {!loading && (
+                <div className="text-sm text-muted">
+                  {dashboardData.attendanceSummary?.lowAttendanceCourses || 0} alert{(dashboardData.attendanceSummary?.lowAttendanceCourses || 0) === 1 ? '' : 's'}
+                </div>
+              )}
             </div>
           </div>
           
@@ -108,32 +120,69 @@ const StudentDashboard = () => {
           </div>
 
           {/* Gamification / Badges Panel */}
-          <div className="glass-panel" style={{ padding: '24px' }}>
-            <h2 style={{ marginBottom: '20px', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Award size={20} className="text-warning" />
-              My Badges
-            </h2>
-            {loading ? (
-              <p>Loading...</p>
-            ) : dashboardData.gamification.badges?.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
-                <Award size={48} style={{ margin: '0 auto 16px', opacity: 0.2 }} />
-                <p>Attend classes and submit assignments to earn badges!</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                {dashboardData.gamification.badges.map((badge, idx) => (
-                  <div key={idx} style={{ 
-                    display: 'flex', alignItems: 'center', gap: '8px', 
-                    padding: '8px 12px', background: 'rgba(245, 158, 11, 0.1)', 
-                    border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 'var(--radius-full)' 
-                  }}>
-                    <span style={{ fontSize: '16px' }}>{badge.icon}</span>
-                    <span style={{ fontSize: '14px', fontWeight: '500', color: 'var(--warning)' }}>{badge.name}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div style={{ display: 'grid', gap: '24px' }}>
+            <div className="glass-panel" style={{ padding: '24px' }}>
+              <h2 style={{ marginBottom: '20px', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertTriangle size={20} className="text-warning" />
+                Smart Insights
+              </h2>
+              {loading ? (
+                <p>Loading...</p>
+              ) : (
+                <div style={{ display: 'grid', gap: '12px' }}>
+                  {(dashboardData.attendanceInsights.length > 0 ? dashboardData.attendanceInsights : [{ title: 'No insights yet', message: 'Attendance insights will appear as your records grow.' }]).map((insight, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: '14px 16px',
+                        borderRadius: 'var(--radius-md)',
+                        background: insight.tone === 'warning'
+                          ? 'rgba(245, 158, 11, 0.1)'
+                          : insight.tone === 'success'
+                            ? 'rgba(34, 197, 94, 0.1)'
+                            : 'rgba(59, 130, 246, 0.1)'
+                      }}
+                    >
+                      <div style={{ fontWeight: '600', marginBottom: '6px' }}>{insight.title}</div>
+                      <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{insight.message}</div>
+                    </div>
+                  ))}
+                  {dashboardData.attendanceAlerts.length > 0 && (
+                    <button className="btn btn-primary" onClick={() => navigate('/student/attendance')} style={{ justifyContent: 'center', marginTop: '6px' }}>
+                      View Full Attendance Analytics
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="glass-panel" style={{ padding: '24px' }}>
+              <h2 style={{ marginBottom: '20px', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Award size={20} className="text-warning" />
+                My Badges
+              </h2>
+              {loading ? (
+                <p>Loading...</p>
+              ) : dashboardData.gamification.badges?.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
+                  <Award size={48} style={{ margin: '0 auto 16px', opacity: 0.2 }} />
+                  <p>Attend classes and submit assignments to earn badges!</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                  {dashboardData.gamification.badges.map((badge, idx) => (
+                    <div key={idx} style={{ 
+                      display: 'flex', alignItems: 'center', gap: '8px', 
+                      padding: '8px 12px', background: 'rgba(245, 158, 11, 0.1)', 
+                      border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 'var(--radius-full)' 
+                    }}>
+                      <span style={{ fontSize: '16px' }}>{badge.icon}</span>
+                      <span style={{ fontSize: '14px', fontWeight: '500', color: 'var(--warning)' }}>{badge.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           
         </div>
