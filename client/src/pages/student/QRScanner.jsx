@@ -24,11 +24,6 @@ const QRScanner = () => {
         setScanning(true);
         setScannerStarted(false);
 
-        const cameras = await Html5Qrcode.getCameras();
-        if (!cameras || cameras.length === 0) {
-          throw new Error('No camera devices found. Please connect a camera and refresh the page.');
-        }
-
         if (scannerRef.current) {
           await scannerRef.current.stop().catch(console.error);
           await scannerRef.current.clear().catch(console.error);
@@ -36,7 +31,6 @@ const QRScanner = () => {
 
         const html5QrCode = new Html5Qrcode('reader');
         scannerRef.current = html5QrCode;
-        const cameraId = cameras[0].id;
 
         const config = {
           fps: 10,
@@ -45,41 +39,62 @@ const QRScanner = () => {
           rememberLastUsedCamera: true,
         };
 
-        await html5QrCode.start(
-          { deviceId: { exact: cameraId } },
-          config,
-          async (decodedText) => {
-            console.log('QR Code detected:', decodedText);
-            await scannerRef.current?.stop().catch(console.error);
-            await scannerRef.current?.clear().catch(console.error);
-            scannerRef.current = null;
-            setScanning(false);
-            setScannerStarted(true);
+        const onScanSuccess = async (decodedText) => {
+          console.log('QR Code detected:', decodedText);
+          await scannerRef.current?.stop().catch(console.error);
+          await scannerRef.current?.clear().catch(console.error);
+          scannerRef.current = null;
+          setScanning(false);
+          setScannerStarted(true);
 
-            try {
-              const url = new URL(decodedText);
-              const token = url.searchParams.get('token');
-              if (token) {
-                markAttendance(token);
-              } else {
-                setError('Invalid QR Code format. No token found.');
-              }
-            } catch {
-              markAttendance(decodedText);
+          try {
+            const url = new URL(decodedText);
+            const token = url.searchParams.get('token');
+            if (token) {
+              markAttendance(token);
+            } else {
+              setError('Invalid QR Code format. No token found.');
             }
-          },
-          (errorMessage) => {
-            console.log('QR Scanner error:', errorMessage);
-            setScannerStarted(true);
-            if (errorMessage.includes('NotAllowedError') || errorMessage.includes('Permission denied')) {
-              setError('Camera permission denied. Please allow camera access and refresh the page.');
-              setScanning(false);
-            } else if (errorMessage.includes('NotFoundError')) {
-              setError('No camera found on this device.');
-              setScanning(false);
-            }
+          } catch {
+            markAttendance(decodedText);
           }
-        );
+        };
+
+        const onScanError = (errorMessage) => {
+          console.log('QR Scanner error:', errorMessage);
+          setScannerStarted(true);
+          if (errorMessage.includes('NotAllowedError') || errorMessage.includes('Permission denied')) {
+            setError('Camera permission denied. Please allow camera access and refresh the page.');
+            setScanning(false);
+          } else if (errorMessage.includes('NotFoundError')) {
+            setError('No camera found on this device.');
+            setScanning(false);
+          }
+        };
+
+        let cameraConfig = { facingMode: { exact: 'environment' } };
+        let cameraStartError = null;
+
+        try {
+          await html5QrCode.start(cameraConfig, config, onScanSuccess, onScanError);
+        } catch (err) {
+          cameraStartError = err;
+          console.warn('Environment camera start failed, falling back to available device IDs.', err);
+        }
+
+        if (cameraStartError) {
+          const cameras = await Html5Qrcode.getCameras();
+          if (!cameras || cameras.length === 0) {
+            throw new Error('No camera devices found. Please connect a camera and refresh the page.');
+          }
+
+          const environmentCamera = cameras.find((camera) => /back|rear|environment|wide/i.test(camera.label));
+          cameraConfig = environmentCamera
+            ? { deviceId: { exact: environmentCamera.id } }
+            : { deviceId: { exact: cameras[0].id } };
+
+          await html5QrCode.start(cameraConfig, config, onScanSuccess, onScanError);
+        }
 
         setScannerStarted(true);
       } catch (err) {
