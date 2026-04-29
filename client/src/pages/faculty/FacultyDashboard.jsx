@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import api from '../../api/axios';
-import { Users, Calendar, CheckCircle, Bell, ClipboardList, CalendarDays, AlertTriangle, TrendingUp } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
+import { Users, Calendar, CheckCircle, Bell, ClipboardList, CalendarDays, AlertTriangle, TrendingUp, BookOpen, Award, Clock, Target, BarChart3 } from 'lucide-react';
+import { ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, CartesianGrid, XAxis, YAxis, Tooltip, Legend, LineChart, Line } from 'recharts';
+import './FacultyDashboard.css';
 
 const FacultyDashboard = () => {
   const navigate = useNavigate();
@@ -39,190 +40,338 @@ const FacultyDashboard = () => {
     fetchDashboardData();
   }, []);
 
+  const totalEnrolledStudents = courses.reduce((acc, c) => acc + (c.enrolledStudents?.length || 0), 0);
+  const attendanceChartData = analytics.byCourse?.map(c => ({
+    course: c.course?.code || 'Course',
+    rate: c.rate || 0
+  })) || [];
+
+  const attendanceDistribution = [
+    { name: 'Present', value: analytics.totalPresent || 0, color: '#22c55e' },
+    { name: 'Absent', value: analytics.totalAbsent || 0, color: '#ef4444' }
+  ];
+
+  const riskCategories = [
+    { name: 'Good (80-100%)', count: analytics.lowAttendance?.filter(l => l.percentage >= 80).length || 0, color: '#10b981' },
+    { name: 'At Risk (60-80%)', count: analytics.lowAttendance?.filter(l => l.percentage >= 60 && l.percentage < 80).length || 0, color: '#f59e0b' },
+    { name: 'Critical (<60%)', count: analytics.lowAttendance?.filter(l => l.percentage < 60).length || 0, color: '#ef4444' }
+  ];
+
   return (
     <DashboardLayout title="Faculty Dashboard">
-      <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-          <div className="glass-panel stat-card">
-            <div className="stat-icon primary"><Calendar size={32} /></div>
-            <div className="stat-content">
-              <h3>My Courses</h3>
-              <div className="stat-value">{loading ? '...' : courses.length}</div>
-            </div>
+      <div className="faculty-dashboard animate-fade-in">
+        {/* Header Section */}
+        <div className="dashboard-header">
+          <div>
+            <h1 className="header-title">Welcome Back, Faculty! 👋</h1>
+            <p className="header-subtitle">Here's your teaching and attendance overview</p>
           </div>
-          
-          <div className="glass-panel stat-card">
-            <div className="stat-icon success"><Users size={32} /></div>
+        </div>
+
+        {/* Key Statistics Cards */}
+        <div className="stats-grid">
+          <div className="stat-card glass-panel stat-primary">
+            <div className="stat-icon-wrapper primary">
+              <BookOpen size={28} />
+            </div>
             <div className="stat-content">
-              <h3>Total Students Enrolled</h3>
-              <div className="stat-value">
-                {loading ? '...' : courses.reduce((acc, c) => acc + (c.enrolledStudents?.length || 0), 0)}
-              </div>
+              <p className="stat-label">My Courses</p>
+              <h3 className="stat-value">{loading ? '...' : courses.length}</h3>
+              <span className="stat-trend">Active courses assigned</span>
             </div>
           </div>
 
-          <div className="glass-panel stat-card">
-            <div className="stat-icon info"><TrendingUp size={32} /></div>
+          <div className="stat-card glass-panel stat-success">
+            <div className="stat-icon-wrapper success">
+              <Users size={28} />
+            </div>
             <div className="stat-content">
-              <h3>Attendance Success Rate</h3>
-              <div className="stat-value">{loading ? '...' : `${analytics.attendanceRate}%`}</div>
+              <p className="stat-label">Total Students</p>
+              <h3 className="stat-value">{loading ? '...' : totalEnrolledStudents}</h3>
+              <span className="stat-trend">Across all courses</span>
             </div>
           </div>
 
-          <div className="glass-panel stat-card">
-            <div className="stat-icon warning"><AlertTriangle size={32} /></div>
+          <div className="stat-card glass-panel stat-info">
+            <div className="stat-icon-wrapper info">
+              <TrendingUp size={28} />
+            </div>
             <div className="stat-content">
-              <h3>At-Risk Students</h3>
-              <div className="stat-value">{loading ? '...' : analytics.lowAttendance.length}</div>
+              <p className="stat-label">Attendance Rate</p>
+              <h3 className="stat-value">{loading ? '...' : `${analytics.attendanceRate}%`}</h3>
+              <span className="stat-trend">{analytics.attendanceRate >= 75 ? '✓ Excellent' : '⚠ Needs attention'}</span>
+            </div>
+          </div>
+
+          <div className="stat-card glass-panel stat-warning">
+            <div className="stat-icon-wrapper warning">
+              <AlertTriangle size={28} />
+            </div>
+            <div className="stat-content">
+              <p className="stat-label">At-Risk Students</p>
+              <h3 className="stat-value">{loading ? '...' : analytics.lowAttendance.length}</h3>
+              <span className="stat-trend">Below 75% attendance</span>
+            </div>
+          </div>
+
+          <div className="stat-card glass-panel stat-accent">
+            <div className="stat-icon-wrapper accent">
+              <Target size={28} />
+            </div>
+            <div className="stat-content">
+              <p className="stat-label">Present Today</p>
+              <h3 className="stat-value">{loading ? '...' : analytics.totalPresent}</h3>
+              <span className="stat-trend">Out of {loading ? '...' : totalEnrolledStudents}</span>
+            </div>
+          </div>
+
+          <div className="stat-card glass-panel stat-secondary">
+            <div className="stat-icon-wrapper secondary">
+              <Award size={28} />
+            </div>
+            <div className="stat-content">
+              <p className="stat-label">Classes Held</p>
+              <h3 className="stat-value">{loading ? '...' : courses.length * 4}</h3>
+              <span className="stat-trend">This semester</span>
             </div>
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <h2 style={{ marginBottom: '20px', fontSize: '18px' }}>Quick Actions</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+        {/* Quick Actions */}
+        <div className="quick-actions-section glass-panel">
+          <div className="section-header">
+            <h2 className="section-title">⚡ Quick Actions</h2>
+            <p className="section-subtitle">Manage your daily tasks efficiently</p>
+          </div>
+          <div className="actions-grid">
             <button
               type="button"
               onClick={() => navigate('/faculty/attendance')}
-              className="glass-panel"
-              style={{ padding: '20px', textAlign: 'left', border: '1px solid var(--glass-border)' }}
+              className="action-btn action-btn-primary"
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                <CheckCircle size={20} className="text-success" />
-                <h3 style={{ margin: 0, fontSize: '16px' }}>Manage Attendance</h3>
+              <CheckCircle size={22} />
+              <div>
+                <h4>Manage Attendance</h4>
+                <p>Take attendance and track presence</p>
               </div>
-              <p style={{ margin: 0, color: 'var(--text-muted)' }}>Take attendance, review student presence, and finalize session status.</p>
             </button>
 
             <button
               type="button"
               onClick={() => navigate('/faculty/assignments')}
-              className="glass-panel"
-              style={{ padding: '20px', textAlign: 'left', border: '1px solid var(--glass-border)' }}
+              className="action-btn action-btn-secondary"
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                <ClipboardList size={20} className="text-primary" />
-                <h3 style={{ margin: 0, fontSize: '16px' }}>Assignments</h3>
+              <ClipboardList size={22} />
+              <div>
+                <h4>Assignments</h4>
+                <p>Create & grade student work</p>
               </div>
-              <p style={{ margin: 0, color: 'var(--text-muted)' }}>Create new assignments, grade submissions, and share feedback with students.</p>
             </button>
 
             <button
               type="button"
               onClick={() => navigate('/faculty/classroom')}
-              className="glass-panel"
-              style={{ padding: '20px', textAlign: 'left', border: '1px solid var(--glass-border)' }}
+              className="action-btn action-btn-info"
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                <BookOpen size={20} className="text-info" />
-                <h3 style={{ margin: 0, fontSize: '16px' }}>Classroom Hub</h3>
+              <BookOpen size={22} />
+              <div>
+                <h4>Classroom Hub</h4>
+                <p>Materials & announcements</p>
               </div>
-              <p style={{ margin: 0, color: 'var(--text-muted)' }}>Post announcements, upload study materials, and monitor class discussion in one place.</p>
             </button>
 
-            <div className="glass-panel" style={{ padding: '20px', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.03)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                <CalendarDays size={20} className="text-warning" />
-                <h3 style={{ margin: 0, fontSize: '16px' }}>Upcoming Classes</h3>
+            <button
+              type="button"
+              className="action-btn action-btn-warning"
+            >
+              <Calendar size={22} />
+              <div>
+                <h4>Timetable</h4>
+                <p>View class schedule</p>
               </div>
-              <p style={{ margin: 0, color: 'var(--text-muted)' }}>Review the next scheduled lectures and check your course timetable at a glance.</p>
-            </div>
-
-            <div className="glass-panel" style={{ padding: '20px', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.03)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                <Bell size={20} className="text-info" />
-                <h3 style={{ margin: 0, fontSize: '16px' }}>Announcements</h3>
-              </div>
-              <p style={{ margin: 0, color: 'var(--text-muted)' }}>Send updates to students, publish notices, and manage class communications.</p>
-            </div>
+            </button>
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <h2 style={{ marginBottom: '20px', fontSize: '18px' }}>Your Courses Overview</h2>
-          {loading ? (
-            <p>Loading your courses...</p>
-          ) : courses.length === 0 ? (
-            <p className="text-muted">You are not assigned to any courses yet.</p>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-              {courses.map(course => (
-                <div key={course._id} style={{ 
-                  padding: '20px', 
-                  background: 'rgba(255,255,255,0.03)', 
-                  border: '1px solid var(--glass-border)', 
-                  borderRadius: 'var(--radius-md)',
-                  transition: 'transform 0.2s',
-                  cursor: 'pointer'
-                }} className="hover:transform hover:-translate-y-1">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.15)', color: 'var(--accent-primary)' }}>
-                      {course.code}
-                    </span>
-                    <span className="text-sm text-muted">Sem {course.semester}</span>
-                  </div>
-                  <h3 style={{ fontSize: '18px', marginBottom: '8px' }}>{course.name}</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '14px' }}>
-                    <Users size={16} />
-                    <span>{course.enrolledStudents?.length || 0} Students</span>
-                  </div>
-                </div>
-              ))}
+        {/* Main Analytics Row */}
+        <div className="analytics-row">
+          {/* Attendance Chart */}
+          <div className="chart-panel glass-panel">
+            <div className="panel-header">
+              <h3 className="panel-title">📊 Course-wise Attendance</h3>
+              <p className="panel-subtitle">Attendance rate by course</p>
             </div>
-          )}
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', alignItems: 'start' }}>
-          <div className="glass-panel" style={{ padding: '24px' }}>
-            <h2 style={{ marginBottom: '8px', fontSize: '18px' }}>Course Attendance Monitoring</h2>
-            <p className="text-muted" style={{ marginBottom: '20px' }}>
-              Track attendance health across the courses you teach.
-            </p>
-            <div style={{ width: '100%', height: '300px' }}>
-              <ResponsiveContainer>
-                <BarChart
-                  data={analytics.byCourse.map((course) => ({
-                    course: course.course?.code || course.course?.name || 'Course',
-                    rate: course.rate
-                  }))}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-                  <XAxis dataKey="course" stroke="rgba(255,255,255,0.7)" />
-                  <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.7)" />
-                  <Tooltip />
-                  <Bar dataKey="rate" name="Attendance %" fill="#22c55e" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="glass-panel" style={{ padding: '24px' }}>
-            <h2 style={{ marginBottom: '16px', fontSize: '18px' }}>Defaulter Watchlist</h2>
             {loading ? (
-              <p>Loading attendance watchlist...</p>
-            ) : analytics.lowAttendance.length === 0 ? (
-              <p className="text-muted">No low-attendance students detected in your courses.</p>
+              <p className="text-muted">Loading chart...</p>
+            ) : attendanceChartData.length === 0 ? (
+              <p className="text-muted">No attendance data available</p>
             ) : (
-              <div style={{ display: 'grid', gap: '12px' }}>
-                {analytics.lowAttendance.slice(0, 5).map((entry) => (
-                  <div
-                    key={`${entry.student?._id}-${entry.course?._id}`}
-                    style={{
-                      padding: '14px 16px',
-                      borderRadius: 'var(--radius-md)',
-                      background: 'rgba(245, 158, 11, 0.08)',
-                      borderLeft: '4px solid var(--warning)'
-                    }}
-                  >
-                    <div style={{ fontWeight: 600 }}>{entry.student?.name}</div>
-                    <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                      {entry.course?.code} • {entry.percentage}% attendance
+              <div className="chart-container">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={attendanceChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                    <XAxis dataKey="course" stroke="rgba(255,255,255,0.7)" />
+                    <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.7)" />
+                    <Tooltip 
+                      contentStyle={{ background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px' }}
+                      formatter={(value) => `${value}%`}
+                    />
+                    <Bar dataKey="rate" name="Attendance %" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          {/* Attendance Distribution Pie Chart */}
+          <div className="chart-panel glass-panel">
+            <div className="panel-header">
+              <h3 className="panel-title">📈 Overall Attendance</h3>
+              <p className="panel-subtitle">Present vs Absent today</p>
+            </div>
+            {loading ? (
+              <p className="text-muted">Loading chart...</p>
+            ) : (
+              <div className="chart-container">
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={attendanceDistribution}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {attendanceDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px' }}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Courses & Risk Analysis Row */}
+        <div className="content-row">
+          {/* Your Courses */}
+          <div className="courses-section glass-panel">
+            <div className="panel-header">
+              <h3 className="panel-title">📚 Your Courses</h3>
+              <p className="panel-subtitle">{courses.length} courses assigned</p>
+            </div>
+            {loading ? (
+              <p className="text-muted">Loading courses...</p>
+            ) : courses.length === 0 ? (
+              <p className="text-muted">You are not assigned to any courses yet.</p>
+            ) : (
+              <div className="courses-list">
+                {courses.slice(0, 6).map(course => (
+                  <div key={course._id} className="course-card">
+                    <div className="course-header">
+                      <span className="course-code">{course.code}</span>
+                      <span className="course-semester">Sem {course.semester}</span>
+                    </div>
+                    <h4 className="course-name">{course.name}</h4>
+                    <div className="course-stats">
+                      <span className="stat-badge">
+                        <Users size={14} /> {course.enrolledStudents?.length || 0} students
+                      </span>
+                      <span className="stat-badge">
+                        <Clock size={14} /> {course.credits} credits
+                      </span>
                     </div>
                   </div>
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Defaulter Watchlist */}
+          <div className="watchlist-section glass-panel">
+            <div className="panel-header">
+              <h3 className="panel-title">⚠️ Attendance Watchlist</h3>
+              <p className="panel-subtitle">Students needing attention</p>
+            </div>
+            {loading ? (
+              <p className="text-muted">Loading watchlist...</p>
+            ) : analytics.lowAttendance.length === 0 ? (
+              <div className="no-data">
+                <p className="text-muted">✓ No low-attendance students. Great job!</p>
+              </div>
+            ) : (
+              <div className="watchlist-items">
+                {analytics.lowAttendance.slice(0, 8).map((entry, idx) => (
+                  <div
+                    key={`${entry.student?._id}-${entry.course?._id}-${idx}`}
+                    className={`watchlist-item risk-${entry.percentage < 60 ? 'critical' : entry.percentage < 80 ? 'medium' : 'low'}`}
+                  >
+                    <div className="watchlist-info">
+                      <div className="student-name">{entry.student?.name}</div>
+                      <div className="course-info">{entry.course?.code} • Roll: {entry.student?.rollNo}</div>
+                    </div>
+                    <div className="attendance-badge">{entry.percentage}%</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Risk Categories Summary */}
+        <div className="risk-summary glass-panel">
+          <div className="panel-header">
+            <h3 className="panel-title">📍 Student Risk Analysis</h3>
+            <p className="panel-subtitle">Categorized by attendance level</p>
+          </div>
+          <div className="risk-grid">
+            {riskCategories.map((category, idx) => (
+              <div key={idx} className="risk-card" style={{ borderLeftColor: category.color }}>
+                <div className="risk-color" style={{ backgroundColor: category.color }}></div>
+                <div className="risk-info">
+                  <p className="risk-label">{category.name}</p>
+                  <h4 className="risk-count">{category.count} students</h4>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Recent Announcements */}
+        <div className="announcements-section glass-panel">
+          <div className="panel-header">
+            <h3 className="panel-title">📢 Recent Announcements</h3>
+            <p className="panel-subtitle">Important updates and notices</p>
+          </div>
+          <div className="announcements-list">
+            <div className="announcement-item">
+              <div className="announcement-icon">📅</div>
+              <div className="announcement-content">
+                <h4>Mid-Semester Exams Schedule</h4>
+                <p>Exams will be held from May 15–22. Check the portal for detailed schedule.</p>
+              </div>
+            </div>
+            <div className="announcement-item">
+              <div className="announcement-icon">⚠️</div>
+              <div className="announcement-content">
+                <h4>Attendance Requirement</h4>
+                <p>Students below 75% attendance won't be allowed for exams.</p>
+              </div>
+            </div>
+            <div className="announcement-item">
+              <div className="announcement-icon">💻</div>
+              <div className="announcement-content">
+                <h4>Programming Contest</h4>
+                <p>Inter-college competition on May 25th with prizes worth ₹50,000!</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
