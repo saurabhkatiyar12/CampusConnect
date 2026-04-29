@@ -10,9 +10,9 @@ const AttendanceSession = require('./models/AttendanceSession');
 const AttendanceRecord = require('./models/AttendanceRecord');
 
 const seed = async () => {
-  const adminPass = 'admin123';
-  const facultyPass = 'faculty123';
-  const studentPass = await bcrypt.hash('student123', 12);
+  const adminPass = 'admin123';  // Plain password for create() method (hook will hash)
+  const facultyPass = await bcrypt.hash('faculty123', 12);  // Pre-hash for insertMany (no hooks)
+  const studentPass = await bcrypt.hash('student123', 12);  // Pre-hash for insertMany (no hooks)
 
   await mongoose.connect(process.env.MONGO_URI);
   console.log('✅ Connected to MongoDB');
